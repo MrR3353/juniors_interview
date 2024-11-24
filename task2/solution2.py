@@ -10,6 +10,11 @@ URL = 'https://ru.wikipedia.org/w/index.php?title=Категория:Живот�
 
 
 def count_animals(page_from, session):
+    '''
+    if we take words starting with the letter “Е” from wikipedia,
+    it will give us the names “обыкновенный ёж” and a couple more types starting with the letter “Ё”
+    the current implementation will consider them to be words starting with "Е"
+    '''
     while True:
         # with requests.session() as session:
             response = session.get(URL + page_from)
@@ -31,9 +36,6 @@ def count_animals(page_from, session):
                     animal_types.remove(page_from)
 
                 with lock:
-                    # if we take words starting with the letter “Е” from wikipedia,
-                    # it will give us the names “обыкновенный ёж” and a couple more types starting with the letter “Ё”
-                    # the current implementation will consider them to be words starting with "О" and "Ё" respectively instead of "е"
                     # for animal_type in animal_types:
                     #     animals[animal_type[0]] = animals.get(animal_type[0], 0) + 1
                     animals[page_from[0]] = animals.get(page_from[0], 0) + len(animal_types)
