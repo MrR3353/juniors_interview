@@ -1,20 +1,20 @@
 import asyncio
 import time
+
 import aiohttp
 from bs4 import BeautifulSoup
-import locale
-from functools import cmp_to_key
-from sortedcontainers import SortedDict
 
 URL = 'https://ru.wikipedia.org/w/index.php?title=Категория:Животные_по_алфавиту&pagefrom='
 
 
-async def count_animals(page_from, session):
+async def count_animals(startswith: str, session: aiohttp.ClientSession):
     '''
     if we take words starting with the letter “Е” from wikipedia,
     it will give us the names “обыкновенный ёж” and a couple more types starting with the letter “Ё”
     the current implementation will consider them to be words starting with "Е"
     '''
+    count = 0
+    page_from = startswith
     while True:
         response = await session.get(URL + page_from)
         if response.status == 200:
@@ -34,35 +34,30 @@ async def count_animals(page_from, session):
             if page_from in animal_types:
                 animal_types.remove(page_from)
 
-            animals[page_from[0]] = animals.get(page_from[0], 0) + len(animal_types)
+            count += len(animal_types)
             if len(animal_types) > 0:
                 page_from = animal_types[-1]
             else:
-                return
+                return startswith, count
         else:
             raise ConnectionError
 
 
+async def get_all_animals():
+    tasks = []
+    async with aiohttp.ClientSession() as session:
+        for i in range(ord('А'), ord('Я') + 1):
+            tasks.append(asyncio.create_task(count_animals(chr(i), session)))
+        animals_by_letters = await asyncio.gather(*tasks)
+    animals_by_letters = {animal[0]: animal[1] for animal in animals_by_letters if animal is not None}
+    return animals_by_letters
+
+
 if __name__ == '__main__':
-    animals = {}
-
-
-    async def async_gather():
-        start = time.time()
-        tasks = []
-        async with aiohttp.ClientSession() as session:
-            for i in range(ord('А'), ord('Я') + 1):
-                tasks.append(asyncio.create_task(count_animals(chr(i), session)))
-            await asyncio.gather(*tasks)
-
-        locale.setlocale(locale.LC_ALL, 'Russian_Russia.1251')
-        sorted_animals = SortedDict(cmp_to_key(locale.strcoll), animals)
-
-        with open('beasts.csv', 'w') as file:
-            for key, value in sorted_animals.items():
-                file.write(f'{key},{value}\n')
-
-        print(sorted_animals)
-        print(time.time() - start)
-
-    asyncio.run(async_gather())
+    start = time.time()
+    animals = asyncio.run(get_all_animals())
+    print(animals)
+    with open('beasts.csv', 'w') as file:
+        for key, value in animals.items():
+            file.write(f'{key},{value}\n')
+    print(time.time() - start)
