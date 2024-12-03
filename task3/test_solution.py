@@ -1,4 +1,4 @@
-from task3.solution import appearance
+from solution import appearance
 
 tests = [
     {'intervals': {'lesson': [1594663200, 1594666800],
